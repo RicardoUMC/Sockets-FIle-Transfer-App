@@ -14,6 +14,21 @@
 int valread;
 int valsend;
 
+int manageServerResponse(int client_socket)
+{
+    char buffer[BUFFER_SIZE];
+    memset(buffer, '\0', BUFFER_SIZE);
+    printf("Manejando respuesta del servidor\n");
+    valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
+    if (valread < 0)
+    {
+        perror("Error al recibir los datos del servidor.");
+        return 0;
+    }
+    printf("Respuesta del servidor: %s\n", buffer);
+    return 1;
+}
+
 void listServerFiles(int client_socket)
 {
     char buffer[BUFFER_SIZE];
@@ -44,6 +59,27 @@ void listServerFiles(int client_socket)
         memset(buffer, '\0', BUFFER_SIZE);
 
     }
+}
+
+void createFolder(int client_socket)
+{
+    char folder_name[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE];
+    memset(buffer, '\0', BUFFER_SIZE);
+
+    printf("Ingrese el nombre de la carpeta que desea crear: ");
+    scanf("%s", folder_name);
+
+    // Enviar solicitud para crear carpeta
+    printf(buffer, "CREATE_FOLDER %s", folder_name);
+    valsend = send(client_socket, buffer, strlen(buffer), 0);
+    if (valsend < 0)
+    {
+        perror("No se pudo enviar el comando CREATE_FOLDER.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    manageServerResponse(client_socket);
 }
 
 int main(void)
@@ -101,9 +137,11 @@ int main(void)
         {
             case 1:
                 listServerFiles(client_socket);
+                manageServerResponse(client_socket);
                 break;
             case 2:
-                printf("Listar.\n");
+                createFolder(client_socket);
+                manageServerResponse(client_socket);
                 break;
             case 3:
                 printf("Por implementar...\n");

@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <dirent.h> // Para trabajar con directorios
+#include <sys/stat.h> // Para crear directorios
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -45,6 +46,29 @@ void listFiles(int client_socket)
     send(client_socket, buffer, 1, 0);
 
     closedir(directory);
+}
+
+void createFolder(int client_socket, char *folder_name)
+{
+    char buffer[BUFFER_SIZE];
+
+    // Intentar crear la carpeta
+    if (mkdir(folder_name, 0777) == 0)
+    {
+        strcpy(buffer, "Carpeta creada exitosamente.");
+    }
+    else
+    {
+        strcpy(buffer, "Error al crear la carpeta.");
+    }
+
+    // Enviar respuesta al cliente
+    valsend = send(client_socket, buffer, strlen(buffer), 0);
+    if (valsend < 0)
+    {
+        perror("Error al enviar datos al cliente");
+        exit(EXIT_FAILURE);
+    }
 }
 
 int main(void)
@@ -104,14 +128,23 @@ int main(void)
             recv(client_socket, buffer, BUFFER_SIZE, 0);
             printf("recibido:  %s  longitud:%d \n",buffer,(int)strlen(buffer));
             buffer[strlen(buffer)]='\0';
-            
-            if (strcmp(buffer, "LIST") == 0) 
+
+            if (strcmp(buffer, "CREATE_FOLDER") == 0)
+            {
+                printf("Creando carpeta...\n");
+                char *folder_name = strtok(buffer, " ");
+                folder_name = strtok(NULL, " ");
+                createFolder(client_socket, folder_name);
+                send(client_socket, "Carpeta creada", strlen("Carpeta creada"), 0);
+                printf("Carpeta creada\n");
+            }
+            else if (strcmp(buffer, "LIST") == 0) 
             {
                 printf("Enlistando...\n");
                 listFiles(client_socket);
+                send(client_socket, "Carpetas y archivos enlistados", strlen("Carpetas y archivos enlistados"), 0);
                 printf("Terminando...\n");
             }
-
             else
             {
                 close(client_socket);

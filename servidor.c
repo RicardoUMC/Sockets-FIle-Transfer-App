@@ -43,16 +43,6 @@ void listFiles(int client_socket)
         exit(EXIT_FAILURE);
     }
 
-    /*memset(buffer, '\0', BUFFER_SIZE);
-    strcpy(buffer, "Directorios y archivos enlistados exitosamente.");
-    // Enviar respuesta al cliente
-    valsend = send(client_socket, buffer, strlen(buffer), 0);
-    if (valsend < 0)
-    {
-        perror("Error al enviar datos al cliente");
-        exit(EXIT_FAILURE);
-    }*/
-
     closedir(directory);
 }
 

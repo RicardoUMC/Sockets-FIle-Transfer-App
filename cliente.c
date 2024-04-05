@@ -29,21 +29,6 @@ void listServerFiles(int client_socket)
     }
 
     memset(buffer, '\0', strlen(buffer));
-    // Recibir y mostrar la lista de archivos
-    /*while (1)
-    {
-        valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
-        if (valread < 0)
-        {
-            perror("Error al recibir los datos del servidor.");
-            exit(EXIT_FAILURE);
-        }
-
-        printf("%s", buffer);
-        if (buffer[valread - 1] == '\0') break;
-        memset(buffer, '\0', BUFFER_SIZE);
-
-    }*/
 
     valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
     if (valread < 0)
@@ -53,18 +38,6 @@ void listServerFiles(int client_socket)
     }
 
     printf("%s", buffer);
-
-    // Recibir respuesta del servidor
-    /*printf("Respuesta del servidor: ");
-    memset(buffer, '\0', BUFFER_SIZE);
-    valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
-    if (valread < 0)
-    {
-        perror("Error al recibir los datos del servidor.");
-        exit(EXIT_FAILURE);
-    }
-    printf("%s\n", buffer);*/
-
 }
 
 void createFolder(int client_socket)

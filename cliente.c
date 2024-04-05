@@ -30,7 +30,7 @@ void listServerFiles(int client_socket)
 
     memset(buffer, '\0', strlen(buffer));
     // Recibir y mostrar la lista de archivos
-    while (1)
+    /*while (1)
     {
         valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
         if (valread < 0)
@@ -43,7 +43,59 @@ void listServerFiles(int client_socket)
         if (buffer[valread - 1] == '\0') break;
         memset(buffer, '\0', BUFFER_SIZE);
 
+    }*/
+
+    valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
+    if (valread < 0)
+    {
+        perror("Error al recibir los datos del servidor.");
+        exit(EXIT_FAILURE);
     }
+
+    printf("%s", buffer);
+
+    // Recibir respuesta del servidor
+    /*printf("Respuesta del servidor: ");
+    memset(buffer, '\0', BUFFER_SIZE);
+    valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
+    if (valread < 0)
+    {
+        perror("Error al recibir los datos del servidor.");
+        exit(EXIT_FAILURE);
+    }
+    printf("%s\n", buffer);*/
+
+}
+
+void createFolder(int client_socket)
+{
+    char folder_name[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE];
+    memset(buffer, '\0', BUFFER_SIZE);
+
+    printf("Ingrese el nombre de la carpeta que desea crear: ");
+    scanf("%s", folder_name);
+
+    strcpy(buffer, "CREATE_FOLDER ");
+    strcat(buffer, folder_name);
+    strcat(buffer, " ");
+    valsend = send(client_socket, buffer, strlen(buffer), 0);
+    if (valsend < 0)
+    {
+        perror("No se pudo enviar el comando CREATE_FOLDER.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Recibir respuesta del servidor
+    memset(buffer, '\0', BUFFER_SIZE);
+    valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
+    if (valread < 0)
+    {
+        perror("Error al recibir los datos del servidor.");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Respuesta del servidor: %s\n", buffer);
 }
 
 int main(void)
@@ -100,10 +152,12 @@ int main(void)
         switch (choice)
         {
             case 1:
+                printf("\n");
                 listServerFiles(client_socket);
                 break;
             case 2:
-                printf("Listar.\n");
+                printf("\n");
+                createFolder(client_socket);
                 break;
             case 3:
                 printf("Por implementar...\n");

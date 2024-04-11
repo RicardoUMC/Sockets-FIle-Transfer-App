@@ -4,8 +4,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <netdb.h>
+#include <libgen.h>
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -14,12 +17,41 @@
 int valread;
 int valsend;
 
-void listServerFiles(int client_socket)
+struct FileMetadata
+{
+    char filename[256];
+    long filesize;
+};
+
+void listFiles(int client_socket)
 {
     char buffer[BUFFER_SIZE];
     memset(buffer, '\0', BUFFER_SIZE);
 
-    // Enviar solicitud para listar archivos
+    printf("Ingrese donde desea realizar la operación (cliente/servidor): ");
+    scanf("%s", buffer);
+
+    if (strcmp(buffer, "cliente") == 0)
+    {
+        struct dirent *entry;
+        DIR *directory = opendir(".");
+        if (directory == NULL)
+        {
+            perror("Error al abrir el directorio");
+            exit(EXIT_FAILURE);
+        }
+        memset(buffer, '\0', BUFFER_SIZE);
+        while ((entry = readdir(directory)) != NULL)
+        {
+            strcat(buffer, entry->d_name);
+            strcat(buffer, "\n");
+        }
+        printf("%s", buffer);
+        closedir(directory);
+        return;
+    }
+
+    memset(buffer, '\0', BUFFER_SIZE);
     strcpy(buffer, "LIST");
     valsend = send(client_socket, buffer, strlen(buffer), 0);
     if (valsend < 0)
@@ -29,21 +61,6 @@ void listServerFiles(int client_socket)
     }
 
     memset(buffer, '\0', strlen(buffer));
-    // Recibir y mostrar la lista de archivos
-    /*while (1)
-    {
-        valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
-        if (valread < 0)
-        {
-            perror("Error al recibir los datos del servidor.");
-            exit(EXIT_FAILURE);
-        }
-
-        printf("%s", buffer);
-        if (buffer[valread - 1] == '\0') break;
-        memset(buffer, '\0', BUFFER_SIZE);
-
-    }*/
 
     valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
     if (valread < 0)
@@ -53,32 +70,31 @@ void listServerFiles(int client_socket)
     }
 
     printf("%s", buffer);
-
-    // Recibir respuesta del servidor
-    /*printf("Respuesta del servidor: ");
-    memset(buffer, '\0', BUFFER_SIZE);
-    valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
-    if (valread < 0)
-    {
-        perror("Error al recibir los datos del servidor.");
-        exit(EXIT_FAILURE);
-    }
-    printf("%s\n", buffer);*/
-
 }
 
 void createFolder(int client_socket)
 {
-    char folder_name[BUFFER_SIZE];
+    char folder_name[BUFFER_SIZE-strlen("CREATE_FOLDER")];
     char buffer[BUFFER_SIZE];
     memset(buffer, '\0', BUFFER_SIZE);
+
+    printf("Ingrese el nombre de la carpeta que desea crear (cliente/servidor): ");
+    scanf("%s %[^\n]", buffer, folder_name);
+
+    if (strcmp(buffer, "cliente") == 0)
+    {
+        // Crear la carpeta en el cliente
+        if (mkdir(folder_name, 0777) == 0)
+            printf("Carpeta creada exitosamente en el cliente.\n");
+        else
+            perror("Error al crear la carpeta en el cliente.\n");
+        return;
+    }
 
     printf("Ingrese el nombre de la carpeta que desea crear: ");
     scanf("%s", folder_name);
 
-    strcpy(buffer, "CREATE_FOLDER ");
-    strcat(buffer, folder_name);
-    strcat(buffer, " ");
+    sprintf(buffer, "CREATE_FOLDER %s", folder_name);
     valsend = send(client_socket, buffer, strlen(buffer), 0);
     if (valsend < 0)
     {
@@ -86,9 +102,137 @@ void createFolder(int client_socket)
         exit(EXIT_FAILURE);
     }
 
+    memset(buffer, '\0', BUFFER_SIZE);
+    valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
+    if (valread < 0)
+    {
+        perror("Error al recibir los datos del servidor.");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Respuesta del servidor: %s\n", buffer);
+}
+
+void deleteFolderFile(int client_socket)
+{
+    char name[BUFFER_SIZE-strlen("DELETE")];
+    char buffer[BUFFER_SIZE];
+    memset(buffer, '\0', BUFFER_SIZE);
+
+    printf("Ingrese el nombre de la carpeta/archivo que desea eliminar: ");
+    scanf("%s", name);
+
+    sprintf(buffer, "DELETE %s", name);
+    valsend = send(client_socket, buffer, strlen(buffer), 0);
+    if (valsend < 0)
+    {
+        perror("No se pudo enviar el comando DELETE.\n");
+        exit(EXIT_FAILURE);
+    }
+
     // Recibir respuesta del servidor
     memset(buffer, '\0', BUFFER_SIZE);
     valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
+    if (valread < 0)
+    {
+        perror("Error al recibir los datos del servidor.");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Respuesta del servidor: %s\n", buffer);
+}
+
+void changeDirectory(int client_socket)
+{
+    char new_directory[BUFFER_SIZE-strlen("CHANGE_DIR")];
+    char buffer[BUFFER_SIZE];
+    memset(buffer, '\0', BUFFER_SIZE);
+
+    printf("Ingrese la nueva ruta de directorio: ");
+    scanf("%s", new_directory);
+
+    // Enviar la solicitud al servidor
+    sprintf(buffer, "CHANGE_DIR %s", new_directory);
+    int valsend = send(client_socket, buffer, strlen(buffer), 0);
+    if (valsend < 0)
+    {
+        perror("No se pudo enviar el comando CHANGE_DIR.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Recibir respuesta del servidor
+    memset(buffer, '\0', BUFFER_SIZE);
+    int valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
+    if (valread < 0)
+    {
+        perror("Error al recibir los datos del servidor.");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Respuesta del servidor: %s\n", buffer);
+}
+
+void uploadFileToServer(int client_socket)
+{
+    char file_path[BUFFER_SIZE-strlen("UPLOAD")];
+    char buffer[BUFFER_SIZE];
+    memset(buffer, '\0', BUFFER_SIZE);
+
+    printf("Ingrese el nombre (ruta relativa o absoluta) del archivo/carpeta a enviar: ");
+    scanf("%s", file_path);
+
+    struct FileMetadata metadata;
+    FILE *file = fopen(file_path, "r");
+    if (file == NULL)
+    {
+        perror("Error al abrir el archivo");
+        exit(EXIT_FAILURE);
+    }
+
+    valsend = send(client_socket, "UPLOAD", strlen("UPLOAD"), 0);
+    if (valsend < 0)
+    {
+        perror("Error al enviar instruccion al servidoor");
+        exit(EXIT_FAILURE);
+    }
+
+    // Obtener el nombre y tamaño del archivo
+    strcpy(metadata.filename, basename(file_path));
+    fseek(file, 0, SEEK_END);
+    metadata.filesize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    // Enviar metainformación al servidor
+    valsend = write(client_socket, &metadata, sizeof(struct FileMetadata));
+    if (valsend < 0)
+    {
+        perror("Error al enviar metadatos al servidor");
+        exit(EXIT_FAILURE);
+    }
+
+    // Enviar el archivo al servidor
+    while (!feof(file))
+    {
+        size_t bytes_read = fread(buffer, 1, BUFFER_SIZE, file);
+        if (bytes_read < 0)
+        {
+            perror("Error al leer el archivo");
+            exit(EXIT_FAILURE);
+        }
+
+        int valsend = send(client_socket, buffer, bytes_read, 0);
+        if (valsend < 0)
+        {
+            perror("Error al enviar el archivo al servidor.");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    fclose(file);
+
+    // Recibir respuesta del servidor
+    memset(buffer, '\0', BUFFER_SIZE);
+    int valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
     if (valread < 0)
     {
         perror("Error al recibir los datos del servidor.");
@@ -106,7 +250,6 @@ int main(void)
     char buffer[BUFFER_SIZE];
     int choice;
 
-    // Crear socket
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket == -1)
     {
@@ -114,7 +257,6 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    // Obtener la dirección IP del servidor
     server = gethostbyname("localhost");
     if (server == NULL)
     {
@@ -122,20 +264,17 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    // Configurar la dirección del servidor
     bzero((char *)&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
     server_addr.sin_port = htons(PORT);
 
-    // Conectar al servidor
     if (connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
     {
         perror("Error al conectar al servidor");
         exit(EXIT_FAILURE);
     }
 
-    // Menú de opciones
     do
     {
         printf("\n=== Menú ===\n");
@@ -153,20 +292,23 @@ int main(void)
         {
             case 1:
                 printf("\n");
-                listServerFiles(client_socket);
+                listFiles(client_socket);
                 break;
             case 2:
                 printf("\n");
                 createFolder(client_socket);
                 break;
             case 3:
-                printf("Por implementar...\n");
+                printf("\n");
+                deleteFolderFile(client_socket);
                 break;
             case 4:
-                printf("Por implementar...\n");
+                printf("\n");
+                changeDirectory(client_socket);
                 break;
             case 5:
-                printf("Por implementar...\n");
+                printf("\n");
+                uploadFileToServer(client_socket);
                 break;
             case 6:
                 printf("Por implementar...\n");
@@ -182,3 +324,4 @@ int main(void)
     close(client_socket);
     return 0;
 }
+

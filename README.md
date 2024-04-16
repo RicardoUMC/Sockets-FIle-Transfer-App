@@ -68,10 +68,6 @@ Two Bash scripts are included to facilitate project compilation and execution:
   - The server receives instructions from clients using the `recv()` function.
   - The server processes client instructions and sends responses using the `send()` function.
 
-**License:**
-
-This project is distributed under the MIT license.
-
 **Notes:**
 
 - This project is a basic example and can be expanded to include more functionalities.
@@ -81,3 +77,18 @@ This project is distributed under the MIT license.
 **Acknowledgments:**
 
 To you, for using this project and for your interest in software development.
+
+**Contributing:**
+
+I appreciate contributions to enhance and improve this project. If you'd like to contribute, please follow these steps:
+
+1. Fork the repository to your own GitHub account.
+2. Clone the forked repository to your local machine.
+3. Make your desired changes or additions to the codebase.
+4. Test your changes thoroughly to ensure they work as expected.
+5. Commit your changes with clear and descriptive commit messages.
+6. Push your changes to your forked repository.
+7. Create a pull request from your forked repository to the main repository.
+8. Provide a detailed description of your changes in the pull request.
+
+Thank you for considering contributing to this project. Your efforts are highly appreciated!

@@ -1,3 +1,3 @@
 #!/bin/bash
 clear
-./client/client
+./../client/client

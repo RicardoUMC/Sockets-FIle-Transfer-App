@@ -10,14 +10,14 @@ if [ -f "$SERVER_BIN" ]; then
 fi
 
 # Compilar el programa servidor
-gcc ./server/server.c -o "$SERVER_BIN"
+gcc ./../server/server.c -o "$SERVER_BIN"
 if [ $? -ne 0 ]; then
     echo "Err./clienteor al compilar el programa servidor."
     exit 1
 fi
 
 # Compilar el programa cliente
-gcc ./client/client.c -o "$CLIENT_BIN"
+gcc ./../client/client.c -o "$CLIENT_BIN"
 if [ $? -ne 0 ]; then
     echo "Error al compilar el programa cliente."
     exit 1

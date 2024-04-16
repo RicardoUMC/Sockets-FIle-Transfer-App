@@ -118,6 +118,12 @@ void changeDirectory(int client_socket, char *new_directory)
         perror("Error al enviar datos al cliente");
         exit(EXIT_FAILURE);
     }
+
+    sleep(1);
+    char *cwd;
+    memset(buffer, '\0', BUFFER_SIZE);
+    cwd = getcwd(buffer, sizeof(buffer));
+    send(client_socket, cwd, strlen(cwd), 0);
 }
 
 void receiveFileFromClient(int client_socket)
@@ -171,8 +177,58 @@ void receiveFileFromClient(int client_socket)
     fclose(file);
 }
 
+void sendFileToClient(int client_socket, char *file_name)
+{
+    char buffer[BUFFER_SIZE];
+    memset(buffer, '\0', BUFFER_SIZE);
+
+    struct FileMetadata metadata;
+    FILE *file = fopen(file_name, "r");
+    if (file == NULL)
+    {
+        perror("Error al abrir el archivo");
+        exit(EXIT_FAILURE);
+    }
+
+    // Obtener el nombre y tamaño del archivo
+    strcpy(metadata.filename, file_name);
+    fseek(file, 0, SEEK_END);
+    metadata.filesize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    // Enviar metainformación al cliente
+    valsend = write(client_socket, &metadata, sizeof(struct FileMetadata));
+    if (valsend < 0)
+    {
+        perror("Error al enviar metadatos al cliente");
+        exit(EXIT_FAILURE);
+    }
+
+    // Enviar el archivo al cliente
+    while (!feof(file))
+    {
+        size_t bytes_read = fread(buffer, 1, BUFFER_SIZE, file);
+        if (bytes_read < 0)
+        {
+            perror("Error al leer el archivo");
+            exit(EXIT_FAILURE);
+        }
+
+        int valsend = send(client_socket, buffer, bytes_read, 0);
+        if (valsend < 0)
+        {
+            perror("Error al enviar el archivo al cliente.");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    fclose(file);
+
+}
+
 int main(void)
 {
+    char buffer[BUFFER_SIZE];
     int server_socket, client_socket;
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
@@ -211,11 +267,14 @@ int main(void)
             exit(EXIT_FAILURE);
         }
         
+        memset(buffer, '\0', BUFFER_SIZE);
+        char *cwd = getcwd(buffer, sizeof(buffer));
+        send(client_socket, cwd, strlen(cwd), 0);
+        
         printf("\n  -> Cliente conectado\n");
         
         while (1)
         {
-            char buffer[BUFFER_SIZE];
             memset(buffer, '\0', BUFFER_SIZE);
 
             printf("Esperando siguiente instrucción...\n");

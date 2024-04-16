@@ -83,7 +83,6 @@ void createFolder(int client_socket)
 
     if (strcmp(buffer, "cliente") == 0)
     {
-        // Crear la carpeta en el cliente
         if (mkdir(folder_name, 0777) == 0)
             printf("Carpeta creada exitosamente en el cliente.\n");
         else
@@ -119,8 +118,17 @@ void deleteFolderFile(int client_socket)
     char buffer[BUFFER_SIZE];
     memset(buffer, '\0', BUFFER_SIZE);
 
-    printf("Ingrese el nombre de la carpeta/archivo que desea eliminar: ");
-    scanf("%s", name);
+    printf("Ingrese el nombre de la carpeta/archivo que desea eliminar (cliente/servidor): ");
+    scanf("%s %[^\n]", buffer, name);
+
+    if (strcmp(buffer, "cliente") == 0)
+    {
+        if (remove(name) == 0)
+            printf("Eliminación exitosa de %s en el cliente.\n", name);
+        else
+            perror("Error al eliminar el recurso en el cliente.\n");
+        return;
+    }
 
     sprintf(buffer, "DELETE %s", name);
     valsend = send(client_socket, buffer, strlen(buffer), 0);
@@ -142,14 +150,27 @@ void deleteFolderFile(int client_socket)
     printf("Respuesta del servidor: %s\n", buffer);
 }
 
-void changeDirectory(int client_socket)
+void changeDirectory(int client_socket, char *client_path, char *server_path)
 {
+    char *path_cwd;
     char new_directory[BUFFER_SIZE-strlen("CHANGE_DIR")];
     char buffer[BUFFER_SIZE];
     memset(buffer, '\0', BUFFER_SIZE);
 
-    printf("Ingrese la nueva ruta de directorio: ");
-    scanf("%s", new_directory);
+    printf("Ingrese la nueva ruta de directorio (cliente/servidor): ");
+    scanf("%s %[^\n]", buffer, new_directory);
+
+    if (strcmp(buffer, "cliente") == 0)
+    {
+        // Cambiar el directorio en el cliente
+        if (chdir(new_directory) == 0)
+            printf("Directorio cambiado exitosamente en el cliente.\n");
+        else
+            perror("Error al cambiar el directorio en el cliente.\n");
+        memset(buffer, '\0', BUFFER_SIZE);
+        client_path = getcwd(buffer, sizeof(buffer));
+        return;
+    }
 
     // Enviar la solicitud al servidor
     sprintf(buffer, "CHANGE_DIR %s", new_directory);
@@ -169,12 +190,16 @@ void changeDirectory(int client_socket)
         exit(EXIT_FAILURE);
     }
 
+    sleep(1);
     printf("Respuesta del servidor: %s\n", buffer);
+
+    memset(server_path, '\0', BUFFER_SIZE);
+    recv(client_socket, server_path, BUFFER_SIZE, 0);
 }
 
 void uploadFileToServer(int client_socket)
 {
-    char file_path[BUFFER_SIZE-strlen("UPLOAD")];
+    char file_path[BUFFER_SIZE];
     char buffer[BUFFER_SIZE];
     memset(buffer, '\0', BUFFER_SIZE);
 
@@ -192,7 +217,7 @@ void uploadFileToServer(int client_socket)
     valsend = send(client_socket, "UPLOAD", strlen("UPLOAD"), 0);
     if (valsend < 0)
     {
-        perror("Error al enviar instruccion al servidoor");
+        perror("Error al enviar instruccion al servidor");
         exit(EXIT_FAILURE);
     }
 
@@ -242,6 +267,61 @@ void uploadFileToServer(int client_socket)
     printf("Respuesta del servidor: %s\n", buffer);
 }
 
+void downloadFileFromServer(int client_socket)
+{
+    char file_name[BUFFER_SIZE-strlen("DOWNLOAD")];
+    char buffer[BUFFER_SIZE];
+    memset(buffer, '\0', BUFFER_SIZE);
+
+    printf("Ingrese el nombre del archivo/carpeta a descargar: ");
+    scanf("%s", file_name);
+
+    sprintf(buffer, "DOWNLOAD %s", file_name);
+    valsend = send(client_socket, buffer, strlen(buffer), 0);
+    if (valsend < 0)
+    {
+        perror("Error al enviar instruccion al servidor");
+        exit(EXIT_FAILURE);
+    }
+
+    struct FileMetadata metadata;
+
+    // Recibir metainformación del servidor
+    int valread = read(client_socket, &metadata, sizeof(struct FileMetadata));
+    if (valread < 0)
+    {
+        perror("Error al recibir metadatos del servidor");
+        exit(EXIT_FAILURE);
+    }
+
+    FILE *file = fopen(metadata.filename, "w");
+    if (file == NULL)
+    {
+        perror("Error al abrir el archivo para escritura");
+        exit(EXIT_FAILURE);
+    }
+
+    // Recibir el archivo del servidor
+    long bytes_received = 0;
+    while (bytes_received < metadata.filesize)
+    {
+        memset(buffer, '\0', BUFFER_SIZE);
+        valread = recv(client_socket, buffer, BUFFER_SIZE, 0);
+        if (valread < 0)
+        {
+            perror("Error al recibir el archivo del servidor");
+            exit(EXIT_FAILURE);
+        }
+
+        fwrite(buffer, 1, valread, file);
+        bytes_received += valread;
+    }
+
+    printf("Descarga exitosa.\n");
+
+    fclose(file);
+}
+
 int main(void)
 {
     int client_socket;
@@ -275,15 +355,22 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
+    char server_cwd[BUFFER_SIZE];
+    memset(server_cwd, '\0', BUFFER_SIZE);
+    recv(client_socket, server_cwd, BUFFER_SIZE, 0);
+
     do
     {
+        memset(buffer, '\0', BUFFER_SIZE);
+        char *cwd = getcwd(buffer, sizeof(buffer));
         printf("\n=== Menú ===\n");
-        printf("1. Listar archivos en el servidor.\n");
-        printf("2. Crear carpeta.\n");
-        printf("3. Eliminar carpeta(s)/archivo(s).\n");
-        printf("4. Cambiar la ruta de directorio.\n");
-        printf("5. Cargar carpeta(s)/archivo(s).\n");
-        printf("6. Descargar carpeta(s)/archivo(s).\n");
+        printf("[cliente: %s]\n[servidor: %s]\n\n", cwd, server_cwd);
+        printf("1. Listar archivos y directorios (cliente/servidor)\n");
+        printf("2. Crear directorio (cliente/servidor)\n");
+        printf("3. Eliminar directorio/archivo (cliente/servidor)\n");
+        printf("4. Cambiar directorio (cliente/servidor)\n");
+        printf("5. Subir archivo al servidor\n");
+        printf("6. Descargar archivo del servidor\n");
         printf("7. Salir\n");
         printf("Ingrese su elección: ");
         scanf("%d", &choice);
@@ -304,14 +391,15 @@ int main(void)
                 break;
             case 4:
                 printf("\n");
-                changeDirectory(client_socket);
+                changeDirectory(client_socket, cwd, server_cwd);
                 break;
             case 5:
                 printf("\n");
                 uploadFileToServer(client_socket);
                 break;
             case 6:
-                printf("Por implementar...\n");
+                printf("\n");
+                downloadFileFromServer(client_socket);
                 break;
             case EXIT_VALUE:
                 printf("Saliendo, terminando programa...\n");

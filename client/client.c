@@ -293,6 +293,7 @@ void downloadFileFromServer(int client_socket)
         perror("Error al recibir metadatos del servidor");
         exit(EXIT_FAILURE);
     }
+    printf("[Recibida la metainformación del servidor]\n");
 
     FILE *file = fopen(metadata.filename, "w");
     if (file == NULL)
@@ -402,6 +403,7 @@ int main(void)
                 downloadFileFromServer(client_socket);
                 break;
             case EXIT_VALUE:
+                send(client_socket, "DISCONNECT", strlen("DISCONNECT"), 0);
                 printf("Saliendo, terminando programa...\n");
                 break;
             default:
@@ -412,4 +414,3 @@ int main(void)
     close(client_socket);
     return 0;
 }
-

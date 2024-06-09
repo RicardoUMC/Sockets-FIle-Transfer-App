@@ -197,6 +197,7 @@ void sendFileToClient(int client_socket, char *file_name)
     fseek(file, 0, SEEK_SET);
 
     // Enviar metainformación al cliente
+    printf("[Enviando metainformación al cliente]\n");
     valsend = write(client_socket, &metadata, sizeof(struct FileMetadata));
     if (valsend < 0)
     {
@@ -312,10 +313,22 @@ int main(void)
                 receiveFileFromClient(client_socket);
                 printf("  -> Carpeta/archivo cargado exitosamente.\n");
             }
-            else
+            else if (strncmp(buffer, "DOWNLOAD", strlen("DOWNLOAD")) == 0)
+            {
+                char *file_name = strtok(buffer, " ");
+                file_name = strtok(NULL, " ");
+                sendFileToClient(client_socket, file_name);
+                printf("  -> Carpeta/archivo descargado exitosamente.\n");
+            }
+            else if (strcmp(buffer, "DISCONNECT") == 0)
             {
                 close(client_socket);
                 printf("  -> Cliente desconectado\n");
+                break;
+            }
+            else
+            {
+                printf("  -> OPERACIÓN NO RECONOCIDA\n");
                 break;
             }
         }
@@ -324,4 +337,3 @@ int main(void)
     close(server_socket);
     return 0;
 }
-

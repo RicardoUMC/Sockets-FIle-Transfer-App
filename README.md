@@ -26,30 +26,48 @@ Two Bash scripts are included to facilitate project compilation and execution:
 
 - **Client:**
   - Navigate to the `client` directory.
-  - Execute the following command to compile the client executable: `gcc client.c -o client`
+  - Execute the following command to compile the client executable:
+    ```
+    gcc client.c -o client
+    ```
 - **Server:**
   - Navigate to the `server` directory.
-  - Execute the following command to compile the server executable: `gcc server.c -o server`
+  - Execute the following command to compile the server executable:
+    ```
+    gcc server.c -o server
+    ```
 
 **2. Using the Scripts:**
 
 - Open a terminal and navigate to the root directory of the project.
-- Execute the following command to compile and run the server: `./compile_and_run_server.sh`
+- Execute the following command to compile and run the server:
+  ```
+  ./compile_and_run_server.sh
+  ```
 
 **Execution:**
 
 **1. Without Using the Scripts:**
 
 - **Server:**
-  - Open a terminal and execute the following command to start the server: `./server`
+  Open a terminal and execute the following command to start the server:
+    ```
+    ./server
+    ```
 - **Client:**
-  - Open another terminal and execute the following command to start the client: `./client`
+  - Open another terminal and execute the following command to start the client:
+    ```
+    ./client
+    ```
   - Follow the on-screen instructions to interact with the server.
 
 **2. Using the Scripts:**
 
 - The `compile_and_run_server.sh` script automatically starts the server after compilation.
-- To start the client, execute the following command: `./run_client.sh`
+- To start the client, execute the following command:
+  ```
+  ./run_client.sh
+  ```
 - Follow the on-screen instructions to interact with the server.
 
 **Code Explanation:**
